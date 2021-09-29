@@ -15,6 +15,8 @@ public class FencingManager : MonoBehaviour {
     public PlayerSettings playerSet1, playerSet2;
     public Vector2[] swordOffsets;
     public Vector2 swordAttackVector;
+    public float swordAttackDuration;
+    public Fencer player1, player2;
     [HideInInspector] public Vector2 camBoundMin, camBoundMax;
 
     private void Awake() {
@@ -24,5 +26,22 @@ public class FencingManager : MonoBehaviour {
         Vector2[] camBounds = Utils.GetCameraBounds();
         camBoundMin = camBounds[0];
         camBoundMax = camBounds[1];
+    }
+
+    private void Update() {
+        // queue fencer flipping to make them face each other
+        Fencer pLeft, pRight;
+        if(player1.transform.position.x != player2.transform.position.x) {
+            if(player1.transform.position.x < player2.transform.position.x) {
+                pLeft = player1; pRight = player2;
+            } else {
+                pLeft = player2; pRight = player1;
+            }
+            if(!pLeft.IsFacingRight) pLeft.QueueFlip();
+            else pLeft.UnqueueFlip();
+
+            if(pRight.IsFacingRight) pRight.QueueFlip();
+            else pRight.UnqueueFlip();
+        }
     }
 }

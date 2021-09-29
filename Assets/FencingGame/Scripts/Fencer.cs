@@ -15,6 +15,9 @@ public class Fencer : MonoBehaviour {
             ChangeSwordPosture(value);
         }
     }
+    public bool IsFacingRight {
+        get { return transform.localScale.x > 1; }
+    }
 
     [SerializeField] bool isPlayer1;
     [SerializeField] float moveSpeed, inAirMoveSpeed, jumpStrength;
@@ -27,9 +30,10 @@ public class Fencer : MonoBehaviour {
     float _halfWidth, _height;
 
     Vector2 movement = Vector2.zero;
-    bool _isGrounded = true, _wasGrounded = true;
+    bool _isGrounded = true, _wasGrounded = true, _isAttacking = false;
     SwordPosture _posture = SwordPosture.Medium;
-    bool _isAttacking = false;
+    bool _flipQueued = false;
+
 
     private void Awake() {
         playerSettings = isPlayer1 ? FencingManager.instance.playerSet1 : FencingManager.instance.playerSet2;
@@ -45,7 +49,6 @@ public class Fencer : MonoBehaviour {
         _rb = GetComponentInChildren<Rigidbody2D>();
         _rend = GetComponentInChildren<SpriteRenderer>();
         _rend.color = playerSettings.color;
-        Transform wrapper = transform.GetChild(0);
         _halfWidth = _rend.sprite.bounds.extents.x * _rend.transform.lossyScale.x;// * wrapper.localScale.x;
         _height = _rend.sprite.bounds.size.y * _rend.transform.lossyScale.y;// * wrapper.localScale.y;
 
@@ -92,18 +95,59 @@ public class Fencer : MonoBehaviour {
     void DoTheSword() {
         if(_isAttacking) return;
 
-        if(Input.GetKeyDown(playerSettings.keyAttack)) {
-            //start the attack
-            Debug.Log("Attack !");
-            return;
-        }
-
         if(Input.GetKeyDown(playerSettings.keyUp)) {
             ChangeSwordPosture(true);
         }
         if(Input.GetKeyDown(playerSettings.keyDown)) {
             ChangeSwordPosture(false);
         }
+
+        if(Input.GetKeyDown(playerSettings.keyAttack)) {
+            //start the attack
+            Debug.Log("Attack !");
+            StartCoroutine(Attack());
+            return;
+        }
+    }
+
+    IEnumerator Attack() {
+        _isAttacking = true;
+        // make the sword move forward then back again
+        float halfDuration = FencingManager.instance.swordAttackDuration * 0.5f;
+        Vector3 originHandlePos = _handle.localPosition;
+        Vector3 maxHandlePos = originHandlePos + (Vector3)FencingManager.instance.swordAttackVector;
+        for(float t=0; t < halfDuration; t += Time.deltaTime) {
+            _handle.localPosition = Vector3.Lerp(originHandlePos, maxHandlePos, t / halfDuration);
+            yield return null;
+        }
+        _handle.localPosition = maxHandlePos;
+        for(float t = 0; t < halfDuration; t += Time.deltaTime) {
+            _handle.localPosition = Vector3.Lerp(maxHandlePos, originHandlePos, t / halfDuration);
+            yield return null;
+        }
+        _handle.localPosition = originHandlePos;
+
+        _isAttacking = false;
+        if(_flipQueued) Flip();
+    }
+
+    public void QueueFlip() {
+        if(!_isAttacking) {
+            UnqueueFlip();
+            Flip();
+        } else {
+            _flipQueued = true;
+        }
+    }
+
+    public void UnqueueFlip() {
+        _flipQueued = false;
+    }
+
+    void Flip() {
+        Vector3 scale = transform.localScale;
+        scale.x = -scale.x;
+        transform.localScale = scale;
     }
 
     void ChangeSwordPosture(bool up) {
